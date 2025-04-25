@@ -46,9 +46,35 @@ WHITELIST_NUM为号码白名单，填写对应要查询的
 号码，多个以,分隔
 
 ## 接下来是如何食用本集成：
-下载集成文件，解压后丢到你homeassistant的/config/custom_components/  路径下。
-重启ha，然后在添加集成搜索电信即可看见
-按提示输入API地址，号码和密码即可
+
+安装步骤
+
+✅ 方法一：通过 HACS 安装（推荐）
+打开 Home Assistant 左侧菜单，点击 HACS
+
+进入右上角菜单 → 选择 “自定义存储库”
+
+填入仓库地址：https://github.com/hlhk2017/ChinaTelecomMonitor-Homeassistant-Integration
 
 
+类型选择 集成 (Integration)，点击添加
 
+返回 HACS 主界面，搜索并安装 “CTM电信”
+
+安装完成后，前往 “设置 → 设备与服务 → 添加集成”
+
+搜索 CTM电信，点击添加并完成配置
+
+快速通过 HACS 链接安装
+
+ 方法二：手动安装
+下载项目源代码或 Release 包
+
+将目录整体复制到 Home Assistant 的路径：
+
+config/custom_components/china_telecom
+重启 Home Assistant
+
+前往 “设置 → 设备与服务 → 添加集成”
+
+搜索 CTM电信，点击添加并完成配置
