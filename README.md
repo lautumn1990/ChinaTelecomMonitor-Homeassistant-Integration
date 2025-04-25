@@ -39,3 +39,4 @@ WHITELIST_NUM为号码白名单，填写对应要查询的
 重启ha，然后在添加集成搜索电信即可看见
 按提示输入API地址，号码和密码即可
 
+![Uploading image.png…]()
