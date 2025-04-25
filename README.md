@@ -1,4 +1,5 @@
 # 这是一个基于[ChinaTelecomMonitor](https://github.com/Cp0204/ChinaTelecomMonitor)接口返回数据制作的homeassistant电信话费集成
+## 本集成由AI参与生成
 在使用前你需要通过docker部署其API：
 
 其部属方式在此贴一个例子：
