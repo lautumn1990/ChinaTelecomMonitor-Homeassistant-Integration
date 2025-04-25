@@ -1,9 +1,9 @@
 # 这是一个基于[ChinaTelecomMonitor](https://github.com/Cp0204/ChinaTelecomMonitor)接口返回数据制作的homeassistant电信话费集成
 ## 本集成由AI参与生成
 在使用前你需要通过docker部署其API：
-
+<br/>
 效果展示：
-
+<br/>
 UI配置框：
 
 ![image](https://github.com/user-attachments/assets/172ec865-5385-49d7-8733-e7cb6649aea7)
@@ -73,8 +73,9 @@ WHITELIST_NUM为号码白名单，填写对应要查询的
 将目录整体复制到 Home Assistant 的路径：
 
 config/custom_components/china_telecom
+
 重启 Home Assistant
-
+<br/>
 前往 “设置 → 设备与服务 → 添加集成”
-
+<br/>
 搜索 CTM电信，点击添加并完成配置
