@@ -65,7 +65,7 @@ WHITELIST_NUM为号码白名单，填写对应要查询的
 
 搜索 CTM电信，点击添加并完成配置
 
-快速通过 HACS 链接安装
+[![快速通过 HACS 链接安装](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hlhk2017&repository=ChinaTelecomMonitor-Homeassistant-Integration&category=integration)
 
  方法二：手动安装
 下载项目源代码或 Release 包
