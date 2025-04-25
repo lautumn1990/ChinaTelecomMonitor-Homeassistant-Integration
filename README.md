@@ -38,6 +38,8 @@ WHITELIST_NUM为号码白名单，填写对应要查询的
 下载集成文件，解压后丢到你homeassistant的/config/custom_components/  路径下。
 重启ha，然后在添加集成搜索电信即可看见
 按提示输入API地址，号码和密码即可
-
+UI配置框：
+![image](https://github.com/user-attachments/assets/172ec865-5385-49d7-8733-e7cb6649aea7)
+实际效果：
 ![image](https://github.com/user-attachments/assets/8f37a781-aaaa-4029-9b3d-c4b87e74674d)
 
