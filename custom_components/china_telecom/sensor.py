@@ -86,14 +86,18 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     }
 
                     # 流量数据处理
+                    total_gb = float(
+                        (int(data["flowInfo"]["totalAmount"]["total"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                    used_gb = float(
+                        (int(data["flowInfo"]["totalAmount"]["used"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                    remaining_gb = float(
+                        (int(data["flowInfo"]["totalAmount"]["balance"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
                     flow_info = {
-                        "totalGB": float(
-                            (int(data["flowInfo"]["totalAmount"]["total"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2)),
-                        "usedGB": float(
-                            (int(data["flowInfo"]["totalAmount"]["used"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2)),
-                        "remainingGB": float(
-                            (int(data["flowInfo"]["totalAmount"]["balance"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2)),
-                        "percentUsed": int(data["flowInfo"]["flowList"][0]["barPercent"].replace('%', ''))
+                        "totalGB": total_gb,
+                        "usedGB": used_gb,
+                        "remainingGB": remaining_gb,
+                        # 使用与语音使用率相同的计算方式
+                        "percentUsed": 100 - (remaining_gb / total_gb * 100).__round__(1) if total_gb > 0 else 0
                     }
 
                     # 语音信息
@@ -101,7 +105,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                         "totalMinutes": int(data["voiceInfo"]["voiceDataInfo"]["total"]),
                         "usedMinutes": int(data["voiceInfo"]["voiceDataInfo"]["used"]),
                         "remainingMinutes": int(data["voiceInfo"]["voiceDataInfo"]["balance"]),
-                        "percentUsed": data["voiceInfo"]["voiceBars"][0]["barPercent"]
+                       # "percentUsed": data["voiceInfo"]["voiceBars"][0]["barPercent"]
                     }
                     voice_info["voicePercentUsed"] = 100 - (
                             voice_info["remainingMinutes"] / voice_info["totalMinutes"] * 100).__round__(1)
@@ -186,4 +190,3 @@ class ChinaTelecomSensor(Entity):
     async def async_update(self):
         """Update the entity. Only used by the generic entity update service."""
         await self.coordinator.async_request_refresh()
-    
