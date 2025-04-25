@@ -2,6 +2,7 @@
 ## 本集成由AI参与生成
 在使用前你需要通过docker部署其API：
 效果展示：
+
 UI配置框：
 
 ![image](https://github.com/user-attachments/assets/172ec865-5385-49d7-8733-e7cb6649aea7)
