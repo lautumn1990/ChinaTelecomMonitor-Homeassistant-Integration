@@ -1,0 +1,2 @@
+# ChinaTelecomMonitor-Homeassistant-Integration
+基于ChinaTelecomMonitor返回数据homeassistant电信话费集成
