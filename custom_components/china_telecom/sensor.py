@@ -6,7 +6,7 @@ import uuid
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceEntryType
-from .const import DOMAIN, CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD
+from.const import DOMAIN, CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, CONF_DEVICE_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,6 +17,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     phonenum = entry.data[CONF_PHONENUM]
     password = entry.data[CONF_PASSWORD]
 
+    # 检查配置项中是否有 device_id，如果没有则生成并保存
+    if CONF_DEVICE_ID not in entry.data:
+        device_id = str(uuid.uuid4())
+        new_data = {**entry.data, CONF_DEVICE_ID: device_id}
+        hass.config_entries.async_update_entry(entry, data=new_data)
+    else:
+        device_id = entry.data[CONF_DEVICE_ID]
+
     coordinator = ChinaTelecomDataUpdateCoordinator(
         hass, api_url, phonenum, password
     )
@@ -25,23 +33,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if not coordinator.last_update_success:
         return
 
-    device_id = str(uuid.uuid4())
+    masked_phonenum = f"{phonenum[:3]}****{phonenum[7:]}"
+
     sensors = []
     # 余额信息
-    sensors.append(ChinaTelecomSensor(coordinator, "balance", "电信账户余额", "¥", "mdi:cash", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "currentMonthCost", "电信本月消费", "¥", "mdi:cash-clock", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "balance", f"{masked_phonenum} 电信账户余额", "¥", "mdi:cash", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "currentMonthCost", f"{masked_phonenum} 电信本月消费", "¥", "mdi:cash-clock", device_id))
     # 流量信息
-    sensors.append(ChinaTelecomSensor(coordinator, "totalGB", "流量总量", "GB", "mdi:network", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "usedGB", "流量已用", "GB", "mdi:network", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "remainingGB", "流量剩余", "GB", "mdi:network", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "percentUsed", "流量使用率", "%", "mdi:percent", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "totalGB", f"{masked_phonenum} 流量总量", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "usedGB", f"{masked_phonenum} 流量已用", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "remainingGB", f"{masked_phonenum} 流量剩余", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "percentUsed", f"{masked_phonenum} 流量使用率", "%", "mdi:percent", device_id))
     # 通话信息
-    sensors.append(ChinaTelecomSensor(coordinator, "totalMinutes", "通话总量", "分钟", "mdi:phone", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "usedMinutes", "通话已用", "分钟", "mdi:phone", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "remainingMinutes", "通话剩余", "分钟", "mdi:phone", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "voicePercentUsed", "通话使用率", "%", "mdi:percent", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "totalMinutes", f"{masked_phonenum} 通话总量", "分钟", "mdi:phone", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "usedMinutes", f"{masked_phonenum} 通话已用", "分钟", "mdi:phone", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "remainingMinutes", f"{masked_phonenum} 通话剩余", "分钟", "mdi:phone", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "voicePercentUsed", f"{masked_phonenum} 通话使用率", "%", "mdi:percent", device_id))
     # 积分信息
-    sensors.append(ChinaTelecomSensor(coordinator, "points", "电信积分", "", "mdi:star", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "points", f"{masked_phonenum} 电信积分", "", "mdi:star", device_id))
 
     async_add_entities(sensors)
 
@@ -68,17 +77,40 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
             login_url = f"{self.api_url}/login?phonenum={self.phonenum}&password={self.password}"
             async with aiohttp.ClientSession() as session:
                 async with session.get(login_url) as response:
-                    login_data = await response.json()
+                    if response.status != 200:
+                        _LOGGER.error(f"Login request failed with status code {response.status}")
+                        raise UpdateFailed(f"Login request failed with status code {response.status}")
+                    try:
+                        login_data = await response.json()
+                    except ValueError as e:
+                        _LOGGER.error(f"Failed to parse login response as JSON: {e}")
+                        raise UpdateFailed(f"Failed to parse login response as JSON: {e}")
+                    if "responseData" not in login_data or "data" not in login_data["responseData"] or "loginSuccessResult" not in login_data["responseData"]["data"]:
+                        _LOGGER.error("Login response does not contain expected data structure")
+                        raise UpdateFailed("Login response does not contain expected data structure")
                     phone_nbr = login_data["responseData"]["data"]["loginSuccessResult"]["phoneNbr"]
 
             # 获取数据
             query_url = f"{self.api_url}/qryImportantData?phonenum={self.phonenum}&password={self.password}"
             async with aiohttp.ClientSession() as session:
                 async with session.get(query_url) as response:
-                    data = await response.json()
+                    if response.status != 200:
+                        _LOGGER.error(f"Query request failed with status code {response.status}")
+                        raise UpdateFailed(f"Query request failed with status code {response.status}")
+                    try:
+                        data = await response.json()
+                    except ValueError as e:
+                        _LOGGER.error(f"Failed to parse query response as JSON: {e}")
+                        raise UpdateFailed(f"Failed to parse query response as JSON: {e}")
+                    if "responseData" not in data or "data" not in data["responseData"]:
+                        _LOGGER.error("Query response does not contain expected data structure")
+                        raise UpdateFailed("Query response does not contain expected data structure")
                     data = data["responseData"]["data"]
 
                     # 话费余额信息
+                    if "balanceInfo" not in data or "indexBalanceDataInfo" not in data["balanceInfo"] or "phoneBillRegion" not in data["balanceInfo"]:
+                        _LOGGER.error("Balance information is missing in the query response")
+                        raise UpdateFailed("Balance information is missing in the query response")
                     balance_info = {
                         "balance": float(data["balanceInfo"]["indexBalanceDataInfo"]["balance"]),
                         "arrear": float(data["balanceInfo"]["indexBalanceDataInfo"]["arrear"]),
@@ -86,31 +118,50 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     }
 
                     # 流量数据处理
+                    if "flowInfo" not in data or "totalAmount" not in data["flowInfo"]:
+                        _LOGGER.error("Flow information is missing in the query response")
+                        raise UpdateFailed("Flow information is missing in the query response")
                     total_gb = float(
                         (int(data["flowInfo"]["totalAmount"]["total"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
                     used_gb = float(
                         (int(data["flowInfo"]["totalAmount"]["used"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
                     remaining_gb = float(
                         (int(data["flowInfo"]["totalAmount"]["balance"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                    # 避免 total_gb 为 0 时计算错误
+                    if total_gb > 0:
+                        flow_percent_used = 100 - (remaining_gb / total_gb * 100).__round__(1)
+                    else:
+                        flow_percent_used = 0
                     flow_info = {
                         "totalGB": total_gb,
                         "usedGB": used_gb,
                         "remainingGB": remaining_gb,
-                        # 使用与语音使用率相同的计算方式
-                        "percentUsed": 100 - (remaining_gb / total_gb * 100).__round__(1) if total_gb > 0 else 0
+                        "percentUsed": flow_percent_used
                     }
 
                     # 语音信息
+                    if "voiceInfo" not in data or "voiceDataInfo" not in data["voiceInfo"]:
+                        _LOGGER.error("Voice information is missing in the query response")
+                        raise UpdateFailed("Voice information is missing in the query response")
+                    total_minutes = int(data["voiceInfo"]["voiceDataInfo"]["total"])
+                    used_minutes = int(data["voiceInfo"]["voiceDataInfo"]["used"])
+                    remaining_minutes = int(data["voiceInfo"]["voiceDataInfo"]["balance"])
+                    # 避免 total_minutes 为 0 时计算错误
+                    if total_minutes > 0:
+                        voice_percent_used = 100 - (remaining_minutes / total_minutes * 100).__round__(1)
+                    else:
+                        voice_percent_used = 0
                     voice_info = {
-                        "totalMinutes": int(data["voiceInfo"]["voiceDataInfo"]["total"]),
-                        "usedMinutes": int(data["voiceInfo"]["voiceDataInfo"]["used"]),
-                        "remainingMinutes": int(data["voiceInfo"]["voiceDataInfo"]["balance"]),
-                       # "percentUsed": data["voiceInfo"]["voiceBars"][0]["barPercent"]
+                        "totalMinutes": total_minutes,
+                        "usedMinutes": used_minutes,
+                        "remainingMinutes": remaining_minutes,
+                        "voicePercentUsed": voice_percent_used
                     }
-                    voice_info["voicePercentUsed"] = 100 - (
-                            voice_info["remainingMinutes"] / voice_info["totalMinutes"] * 100).__round__(1)
 
                     # 积分信息
+                    if "integralInfo" not in data:
+                        _LOGGER.error("Integral information is missing in the query response")
+                        raise UpdateFailed("Integral information is missing in the query response")
                     points = int(data["integralInfo"]["integral"])
 
                     return {
@@ -120,6 +171,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                         "points": points
                     }
         except Exception as error:
+            _LOGGER.error(f"Error fetching data: {error}")
             raise UpdateFailed(f"Error fetching data: {error}")
 
 
@@ -134,7 +186,8 @@ class ChinaTelecomSensor(Entity):
         self._unit = unit
         self._icon = icon
         self._device_id = device_id
-        self._unique_id = f"{device_id}_{key}"
+        self.masked_phonenum = name.split(" ")[0]  # 提取隐去中间四位的号码
+        self._unique_id = f"{self.masked_phonenum}_{device_id}_{key}"  # 在实体 ID 中添加号码
 
     @property
     def name(self):
@@ -171,7 +224,7 @@ class ChinaTelecomSensor(Entity):
         """Return device information."""
         return {
             "identifiers": {(DOMAIN, self._device_id)},
-            "name": "中国电信设备",
+            "name": f"{self.masked_phonenum} 套餐信息",
             "manufacturer": "中国电信",
             "entry_type": DeviceEntryType.SERVICE,
         }
