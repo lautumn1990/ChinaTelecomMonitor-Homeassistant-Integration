@@ -79,7 +79,6 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                 async with session.get(login_url) as response:
                     if response.status != 200:
                         _LOGGER.warning(f"Login request failed with status code {response.status}, but continuing...")
-                        # 可以在这里添加一些处理逻辑，例如使用默认数据或跳过登录相关步骤
                         phone_nbr = None
                     else:
                         try:
@@ -113,19 +112,17 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     if "balanceInfo" not in data or "indexBalanceDataInfo" not in data["balanceInfo"] or "phoneBillRegion" not in data["balanceInfo"]:
                         _LOGGER.error("Balance information is missing in the query response")
                         raise UpdateFailed("Balance information is missing in the query response")
-                    try:
-                        balance_info = {
-                            "balance": float(data["balanceInfo"]["indexBalanceDataInfo"]["balance"]),
-                            "arrear": float(data["balanceInfo"]["indexBalanceDataInfo"]["arrear"]),
-                            "currentMonthCost": float(data["balanceInfo"]["phoneBillRegion"]["subTitleHh"].replace('元', ''))
-                        }
-                    except ValueError as e:
-                        _LOGGER.error(f"Failed to convert balance information to float: {e}")
-                        balance_info = {
-                            "balance": 0.0,
-                            "arrear": 0.0,
-                            "currentMonthCost": 0.0
-                        }
+                    balance_str = data["balanceInfo"]["indexBalanceDataInfo"]["balance"]
+                    arrear_str = data["balanceInfo"]["indexBalanceDataInfo"]["arrear"]
+                    currentMonthCost_str = data["balanceInfo"]["phoneBillRegion"]["subTitleHh"].replace('元', '')
+                    balance = self._safe_convert_float(balance_str)
+                    arrear = self._safe_convert_float(arrear_str)
+                    currentMonthCost = self._safe_convert_float(currentMonthCost_str)
+                    balance_info = {
+                        "balance": balance,
+                        "arrear": arrear,
+                        "currentMonthCost": currentMonthCost
+                    }
 
                     # 流量数据处理
                     if "flowInfo" not in data or "totalAmount" not in data["flowInfo"]:
@@ -145,7 +142,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                         remaining_gb = 0.0
                     # 避免 total_gb 为 0 时计算错误
                     if total_gb > 0:
-                        flow_percent_used = 100 - (remaining_gb / total_gb * 100).__round__(1)
+                        flow_percent_used = 100 - (remaining_gb / total_gb * 100).__round__(2)
                     else:
                         flow_percent_used = 0
                     flow_info = {
@@ -159,15 +156,12 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     if "voiceInfo" not in data or "voiceDataInfo" not in data["voiceInfo"]:
                         _LOGGER.error("Voice information is missing in the query response")
                         raise UpdateFailed("Voice information is missing in the query response")
-                    try:
-                        total_minutes = int(data["voiceInfo"]["voiceDataInfo"]["total"])
-                        used_minutes = int(data["voiceInfo"]["voiceDataInfo"]["used"])
-                        remaining_minutes = int(data["voiceInfo"]["voiceDataInfo"]["balance"])
-                    except ValueError as e:
-                        _LOGGER.error(f"Failed to convert voice information to int: {e}")
-                        total_minutes = 0
-                        used_minutes = 0
-                        remaining_minutes = 0
+                    total_minutes_str = data["voiceInfo"]["voiceDataInfo"]["total"]
+                    used_minutes_str = data["voiceInfo"]["voiceDataInfo"]["used"]
+                    remaining_minutes_str = data["voiceInfo"]["voiceDataInfo"]["balance"]
+                    total_minutes = self._safe_convert_int(total_minutes_str)
+                    used_minutes = self._safe_convert_int(used_minutes_str)
+                    remaining_minutes = self._safe_convert_int(remaining_minutes_str)
                     # 避免 total_minutes 为 0 时计算错误
                     if total_minutes > 0:
                         voice_percent_used = 100 - (remaining_minutes / total_minutes * 100).__round__(1)
@@ -184,11 +178,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     if "integralInfo" not in data:
                         _LOGGER.error("Integral information is missing in the query response")
                         raise UpdateFailed("Integral information is missing in the query response")
-                    try:
-                        points = int(data["integralInfo"]["integral"])
-                    except ValueError as e:
-                        _LOGGER.error(f"Failed to convert points to int: {e}")
-                        points = 0
+                    points = self._safe_convert_int(data["integralInfo"]["integral"])
 
                     return {
                         **balance_info,
@@ -199,6 +189,27 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as error:
             _LOGGER.error(f"Error fetching data: {error}")
             raise UpdateFailed(f"Error fetching data: {error}")
+
+    def _safe_convert_float(self, value):
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            _LOGGER.warning(f"Failed to convert {value} to float, using 0.")
+            return 0.0
+
+    def _safe_convert_int(self, value):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            _LOGGER.warning(f"Failed to convert {value} to int, using 0.")
+            return 0
+
+    def _extract_numeric_value(self, value):
+        import re
+        match = re.search(r'\d+(\.\d+)?', value)
+        if match:
+            return match.group(0)
+        return '0'
 
 
 class ChinaTelecomSensor(Entity):
