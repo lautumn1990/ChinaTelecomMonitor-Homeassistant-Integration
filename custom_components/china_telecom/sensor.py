@@ -6,7 +6,7 @@ import uuid
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceEntryType
-from.const import DOMAIN, CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, CONF_DEVICE_ID
+from .const import DOMAIN, CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, CONF_DEVICE_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,17 +78,19 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
             async with aiohttp.ClientSession() as session:
                 async with session.get(login_url) as response:
                     if response.status != 200:
-                        _LOGGER.error(f"Login request failed with status code {response.status}")
-                        raise UpdateFailed(f"Login request failed with status code {response.status}")
-                    try:
-                        login_data = await response.json()
-                    except ValueError as e:
-                        _LOGGER.error(f"Failed to parse login response as JSON: {e}")
-                        raise UpdateFailed(f"Failed to parse login response as JSON: {e}")
-                    if "responseData" not in login_data or "data" not in login_data["responseData"] or "loginSuccessResult" not in login_data["responseData"]["data"]:
-                        _LOGGER.error("Login response does not contain expected data structure")
-                        raise UpdateFailed("Login response does not contain expected data structure")
-                    phone_nbr = login_data["responseData"]["data"]["loginSuccessResult"]["phoneNbr"]
+                        _LOGGER.warning(f"Login request failed with status code {response.status}, but continuing...")
+                        # 可以在这里添加一些处理逻辑，例如使用默认数据或跳过登录相关步骤
+                        phone_nbr = None
+                    else:
+                        try:
+                            login_data = await response.json()
+                        except ValueError as e:
+                            _LOGGER.error(f"Failed to parse login response as JSON: {e}")
+                            raise UpdateFailed(f"Failed to parse login response as JSON: {e}")
+                        if "responseData" not in login_data or "data" not in login_data["responseData"] or "loginSuccessResult" not in login_data["responseData"]["data"]:
+                            _LOGGER.error("Login response does not contain expected data structure")
+                            raise UpdateFailed("Login response does not contain expected data structure")
+                        phone_nbr = login_data["responseData"]["data"]["loginSuccessResult"]["phoneNbr"]
 
             # 获取数据
             query_url = f"{self.api_url}/qryImportantData?phonenum={self.phonenum}&password={self.password}"
@@ -111,22 +113,36 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     if "balanceInfo" not in data or "indexBalanceDataInfo" not in data["balanceInfo"] or "phoneBillRegion" not in data["balanceInfo"]:
                         _LOGGER.error("Balance information is missing in the query response")
                         raise UpdateFailed("Balance information is missing in the query response")
-                    balance_info = {
-                        "balance": float(data["balanceInfo"]["indexBalanceDataInfo"]["balance"]),
-                        "arrear": float(data["balanceInfo"]["indexBalanceDataInfo"]["arrear"]),
-                        "currentMonthCost": float(data["balanceInfo"]["phoneBillRegion"]["subTitleHh"].replace('元', ''))
-                    }
+                    try:
+                        balance_info = {
+                            "balance": float(data["balanceInfo"]["indexBalanceDataInfo"]["balance"]),
+                            "arrear": float(data["balanceInfo"]["indexBalanceDataInfo"]["arrear"]),
+                            "currentMonthCost": float(data["balanceInfo"]["phoneBillRegion"]["subTitleHh"].replace('元', ''))
+                        }
+                    except ValueError as e:
+                        _LOGGER.error(f"Failed to convert balance information to float: {e}")
+                        balance_info = {
+                            "balance": 0.0,
+                            "arrear": 0.0,
+                            "currentMonthCost": 0.0
+                        }
 
                     # 流量数据处理
                     if "flowInfo" not in data or "totalAmount" not in data["flowInfo"]:
                         _LOGGER.error("Flow information is missing in the query response")
                         raise UpdateFailed("Flow information is missing in the query response")
-                    total_gb = float(
-                        (int(data["flowInfo"]["totalAmount"]["total"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
-                    used_gb = float(
-                        (int(data["flowInfo"]["totalAmount"]["used"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
-                    remaining_gb = float(
-                        (int(data["flowInfo"]["totalAmount"]["balance"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                    try:
+                        total_gb = float(
+                            (int(data["flowInfo"]["totalAmount"]["total"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                        used_gb = float(
+                            (int(data["flowInfo"]["totalAmount"]["used"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                        remaining_gb = float(
+                            (int(data["flowInfo"]["totalAmount"]["balance"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                    except ValueError as e:
+                        _LOGGER.error(f"Failed to convert flow information to float: {e}")
+                        total_gb = 0.0
+                        used_gb = 0.0
+                        remaining_gb = 0.0
                     # 避免 total_gb 为 0 时计算错误
                     if total_gb > 0:
                         flow_percent_used = 100 - (remaining_gb / total_gb * 100).__round__(1)
@@ -143,9 +159,15 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     if "voiceInfo" not in data or "voiceDataInfo" not in data["voiceInfo"]:
                         _LOGGER.error("Voice information is missing in the query response")
                         raise UpdateFailed("Voice information is missing in the query response")
-                    total_minutes = int(data["voiceInfo"]["voiceDataInfo"]["total"])
-                    used_minutes = int(data["voiceInfo"]["voiceDataInfo"]["used"])
-                    remaining_minutes = int(data["voiceInfo"]["voiceDataInfo"]["balance"])
+                    try:
+                        total_minutes = int(data["voiceInfo"]["voiceDataInfo"]["total"])
+                        used_minutes = int(data["voiceInfo"]["voiceDataInfo"]["used"])
+                        remaining_minutes = int(data["voiceInfo"]["voiceDataInfo"]["balance"])
+                    except ValueError as e:
+                        _LOGGER.error(f"Failed to convert voice information to int: {e}")
+                        total_minutes = 0
+                        used_minutes = 0
+                        remaining_minutes = 0
                     # 避免 total_minutes 为 0 时计算错误
                     if total_minutes > 0:
                         voice_percent_used = 100 - (remaining_minutes / total_minutes * 100).__round__(1)
@@ -162,7 +184,11 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     if "integralInfo" not in data:
                         _LOGGER.error("Integral information is missing in the query response")
                         raise UpdateFailed("Integral information is missing in the query response")
-                    points = int(data["integralInfo"]["integral"])
+                    try:
+                        points = int(data["integralInfo"]["integral"])
+                    except ValueError as e:
+                        _LOGGER.error(f"Failed to convert points to int: {e}")
+                        points = 0
 
                     return {
                         **balance_info,
