@@ -78,24 +78,6 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Update data via API."""
         try:
-            # 先登录
-            login_url = f"{self.api_url}/login?phonenum={self.phonenum}&password={self.password}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(login_url) as response:
-                    if response.status != 200:
-                        _LOGGER.warning(f"Login request failed with status code {response.status}, but continuing...")
-                        phone_nbr = None
-                    else:
-                        try:
-                            login_data = await response.json()
-                        except ValueError as e:
-                            _LOGGER.error(f"Failed to parse login response as JSON: {e}")
-                            raise UpdateFailed(f"Failed to parse login response as JSON: {e}")
-                        if "responseData" not in login_data or "data" not in login_data["responseData"] or "loginSuccessResult" not in login_data["responseData"]["data"]:
-                            _LOGGER.error("Login response does not contain expected data structure")
-                            raise UpdateFailed("Login response does not contain expected data structure")
-                        phone_nbr = login_data["responseData"]["data"]["loginSuccessResult"]["phoneNbr"]
-
             # 获取数据
             query_url = f"{self.api_url}/qryImportantData?phonenum={self.phonenum}&password={self.password}"
             async with aiohttp.ClientSession() as session:
