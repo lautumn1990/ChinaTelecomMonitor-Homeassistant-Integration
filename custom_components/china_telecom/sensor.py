@@ -72,7 +72,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=1),
+            update_interval=timedelta(minutes=10),
         )
 
     async def _async_update_data(self):
