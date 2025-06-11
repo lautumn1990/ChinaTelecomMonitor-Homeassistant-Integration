@@ -152,7 +152,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                         zy_used_gb = 0.0
                     # 避免 total_gb 为 0 时计算错误
                     if total_gb > 0:
-                        flow_percent_used = 100 - (remaining_gb / total_gb * 100).__round__(2)
+                        flow_percent_used = (100 - (remaining_gb / total_gb * 100)).__round__(2)
                     else:
                         flow_percent_used = 0
                     flow_info = {
@@ -178,7 +178,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                     remaining_minutes = self._safe_convert_int(remaining_minutes_str)
                     # 避免 total_minutes 为 0 时计算错误
                     if total_minutes > 0:
-                        voice_percent_used = 100 - (remaining_minutes / total_minutes * 100).__round__(1)
+                        voice_percent_used = (100 - (remaining_minutes / total_minutes * 100)).__round__(1)
                     else:
                         voice_percent_used = 0
                     voice_info = {
