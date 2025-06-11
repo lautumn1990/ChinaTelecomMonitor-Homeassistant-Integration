@@ -1,4 +1,4 @@
-DOMAIN = "china_telecom"
+DOMAIN = "china_telecom_lau"
 CONF_API_URL = "api_url"
 CONF_PHONENUM = "phonenum"
 CONF_PASSWORD = "password"

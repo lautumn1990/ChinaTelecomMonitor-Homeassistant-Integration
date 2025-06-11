@@ -54,7 +54,7 @@ WHITELIST_NUM为号码白名单，填写对应要查询的
 
 进入右上角菜单 → 选择 “自定义存储库”
 
-填入仓库地址：https://github.com/hlhk2017/ChinaTelecomMonitor-Homeassistant-Integration
+填入仓库地址：https://github.com/lautumn1990/ChinaTelecomMonitor-Homeassistant-Integration
 
 
 类型选择 集成 (Integration)，点击添加
@@ -79,3 +79,7 @@ config/custom_components/china_telecom
 前往 “设置 → 设备与服务 → 添加集成”
 <br/>
 搜索 CTM电信，点击添加并完成配置
+
+## 原始仓库地址
+
+[ChinaTelecomMonitor-Homeassistant-Integration](https://github.com/hlhk2017/ChinaTelecomMonitor-Homeassistant-Integration)

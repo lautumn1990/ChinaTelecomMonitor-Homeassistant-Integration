@@ -1,12 +1,12 @@
 {
-    "domain": "china_telecom",
-    "name": "CTM电信",
-    "documentation": "https://github.com/hlhk2017/ChinaTelecomMonitor-Homeassistant-Integration",
+    "domain": "china_telecom_lau",
+    "name": "CTM电信_lau",
+    "documentation": "https://github.com/lautumn190/ChinaTelecomMonitor-Homeassistant-Integration",
     "requirements": ["aiohttp", "voluptuous"],
     "dependencies": [],
     "codeowners": ["@hlhk2017"],
     "version": "1.0.1",
     "iot_class": "cloud_polling",
-    "loggers": ["custom_components.china_telecom"],
+    "loggers": ["custom_components.china_telecom_lau"],
     "config_flow": true
 }    

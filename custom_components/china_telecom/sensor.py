@@ -44,6 +44,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     sensors.append(ChinaTelecomSensor(coordinator, "usedGB", f"{masked_phonenum} 流量已用", "GB", "mdi:network", device_id))
     sensors.append(ChinaTelecomSensor(coordinator, "remainingGB", f"{masked_phonenum} 流量剩余", "GB", "mdi:network", device_id))
     sensors.append(ChinaTelecomSensor(coordinator, "percentUsed", f"{masked_phonenum} 流量使用率", "%", "mdi:percent", device_id))
+    # 通用流量/专用流量
+    sensors.append(ChinaTelecomSensor(coordinator, "tyTotalGB", f"{masked_phonenum} 通用流量总量", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "tyUsedGB", f"{masked_phonenum} 通用流量已用", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "zyTotalGB", f"{masked_phonenum} 专用流量总量", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "zyUsedGB", f"{masked_phonenum} 专用流量已用", "GB", "mdi:network", device_id))
     # 通话信息
     sensors.append(ChinaTelecomSensor(coordinator, "totalMinutes", f"{masked_phonenum} 通话总量", "分钟", "mdi:phone", device_id))
     sensors.append(ChinaTelecomSensor(coordinator, "usedMinutes", f"{masked_phonenum} 通话已用", "分钟", "mdi:phone", device_id))
@@ -67,7 +72,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=6),
+            update_interval=timedelta(hours=1),
         )
 
     async def _async_update_data(self):
@@ -129,17 +134,22 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                         _LOGGER.error("Flow information is missing in the query response")
                         raise UpdateFailed("Flow information is missing in the query response")
                     try:
-                        total_gb = float(
-                            (int(data["flowInfo"]["totalAmount"]["total"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
-                        used_gb = float(
-                            (int(data["flowInfo"]["totalAmount"]["used"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
-                        remaining_gb = float(
-                            (int(data["flowInfo"]["totalAmount"]["balance"].replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                        total_gb =self._safe_convert_gb(data["flowInfo"]["totalAmount"]["total"])
+                        used_gb = self._safe_convert_gb(data["flowInfo"]["totalAmount"]["used"])
+                        remaining_gb = self._safe_convert_gb(data["flowInfo"]["totalAmount"]["balance"])
+                        ty_total_gb = self._safe_convert_gb(data["flowInfo"]["commonFlow"]["balance"])
+                        ty_used_gb = self._safe_convert_gb(data["flowInfo"]["commonFlow"]["used"])
+                        zy_total_gb = self._safe_convert_gb(data["flowInfo"]["specialAmount"]["balance"])
+                        zy_used_gb = self._safe_convert_gb(data["flowInfo"]["specialAmount"]["used"])
                     except ValueError as e:
                         _LOGGER.error(f"Failed to convert flow information to float: {e}")
                         total_gb = 0.0
                         used_gb = 0.0
                         remaining_gb = 0.0
+                        ty_total_gb = 0.0
+                        ty_used_gb = 0.0
+                        zy_total_gb = 0.0
+                        zy_used_gb = 0.0
                     # 避免 total_gb 为 0 时计算错误
                     if total_gb > 0:
                         flow_percent_used = 100 - (remaining_gb / total_gb * 100).__round__(2)
@@ -149,7 +159,11 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
                         "totalGB": total_gb,
                         "usedGB": used_gb,
                         "remainingGB": remaining_gb,
-                        "percentUsed": flow_percent_used
+                        "percentUsed": flow_percent_used,
+                        "tyTotalGB" : ty_total_gb,
+                        "tyUsedGB" : ty_used_gb,
+                        "zyTotalGB" : zy_total_gb,
+                        "zyUsedGB" : zy_used_gb,
                     }
 
                     # 语音信息
@@ -189,6 +203,16 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as error:
             _LOGGER.error(f"Error fetching data: {error}")
             raise UpdateFailed(f"Error fetching data: {error}")
+
+    def _safe_convert_gb(self, value):
+        try:
+            if value != '' :
+                return float((int(value.replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+            else:
+                return 0.0
+        except (ValueError, TypeError):
+            _LOGGER.warning(f"Failed to convert {value} to float, using 0.")
+            return 0.0
 
     def _safe_convert_float(self, value):
         try:
