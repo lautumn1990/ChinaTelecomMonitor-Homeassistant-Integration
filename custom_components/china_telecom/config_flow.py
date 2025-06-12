@@ -1,6 +1,6 @@
 import voluptuous as vol
 from homeassistant import config_entries
-from .const import CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, DOMAIN
+from .const import CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, DOMAIN, CONF_UPDATE_INTERVAL
 import re
 
 # 验证 API URL 的格式
@@ -45,6 +45,7 @@ class ChinaTelecomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_API_URL): str,
                     vol.Required(CONF_PHONENUM): str,
                     vol.Required(CONF_PASSWORD): str,
+                    vol.Optional(CONF_UPDATE_INTERVAL, default=10): int,
                 }
             ),
             errors=errors,
@@ -68,4 +69,4 @@ class ChinaTelecomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as e:
             _LOGGER.error(f"从配置文件导入时出现未知错误: {str(e)}")
         return self.async_abort(reason="import_failed")
-    
+

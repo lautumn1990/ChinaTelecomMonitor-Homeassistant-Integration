@@ -6,7 +6,7 @@ import uuid
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceEntryType
-from .const import DOMAIN, CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, CONF_DEVICE_ID
+from .const import DOMAIN, CONF_API_URL, CONF_PHONENUM, CONF_PASSWORD, CONF_DEVICE_ID, CONF_UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     api_url = entry.data[CONF_API_URL]
     phonenum = entry.data[CONF_PHONENUM]
     password = entry.data[CONF_PASSWORD]
+    update_interval = entry.data.get(CONF_UPDATE_INTERVAL, 10)
 
     # 检查配置项中是否有 device_id，如果没有则生成并保存
     if CONF_DEVICE_ID not in entry.data:
@@ -26,7 +27,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         device_id = entry.data[CONF_DEVICE_ID]
 
     coordinator = ChinaTelecomDataUpdateCoordinator(
-        hass, api_url, phonenum, password
+        hass, api_url, phonenum, password, update_interval
     )
     await coordinator.async_refresh()
 
@@ -63,7 +64,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching China Telecom data."""
 
-    def __init__(self, hass, api_url, phonenum, password):
+    def __init__(self, hass, api_url, phonenum, password, update_interval):
         """Initialize."""
         self.api_url = api_url
         self.phonenum = phonenum
@@ -72,7 +73,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=10),
+            update_interval=timedelta(minutes=update_interval),
         )
 
     async def _async_update_data(self):
