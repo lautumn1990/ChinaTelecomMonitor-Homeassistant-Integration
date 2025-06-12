@@ -46,9 +46,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     sensors.append(ChinaTelecomSensor(coordinator, "remainingGB", f"{masked_phonenum} 流量剩余", "GB", "mdi:network", device_id))
     sensors.append(ChinaTelecomSensor(coordinator, "percentUsed", f"{masked_phonenum} 流量使用率", "%", "mdi:percent", device_id))
     # 通用流量/专用流量
-    sensors.append(ChinaTelecomSensor(coordinator, "tyTotalGB", f"{masked_phonenum} 通用流量总量", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "tyTotalGB", f"{masked_phonenum} 通用流量剩余", "GB", "mdi:network", device_id))
     sensors.append(ChinaTelecomSensor(coordinator, "tyUsedGB", f"{masked_phonenum} 通用流量已用", "GB", "mdi:network", device_id))
-    sensors.append(ChinaTelecomSensor(coordinator, "zyTotalGB", f"{masked_phonenum} 专用流量总量", "GB", "mdi:network", device_id))
+    sensors.append(ChinaTelecomSensor(coordinator, "zyTotalGB", f"{masked_phonenum} 专用流量剩余", "GB", "mdi:network", device_id))
     sensors.append(ChinaTelecomSensor(coordinator, "zyUsedGB", f"{masked_phonenum} 专用流量已用", "GB", "mdi:network", device_id))
     # 通话信息
     sensors.append(ChinaTelecomSensor(coordinator, "totalMinutes", f"{masked_phonenum} 通话总量", "分钟", "mdi:phone", device_id))
@@ -190,7 +190,7 @@ class ChinaTelecomDataUpdateCoordinator(DataUpdateCoordinator):
     def _safe_convert_gb(self, value):
         try:
             if value != '' :
-                return float((int(value.replace(r'[^0-9]', '')) / 1024 / 1024).__round__(2))
+                return float((int(value.replace(r'[^0-9]', '')) / 1024 / 1024).__round__(3))
             else:
                 return 0.0
         except (ValueError, TypeError):
